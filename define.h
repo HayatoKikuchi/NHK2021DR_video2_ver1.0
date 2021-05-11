@@ -27,10 +27,6 @@ struct coords_4{
 #define PIN_DIP2 24
 #define PIN_DIP3 69
 #define PIN_DIP4 70
-#define DIP1_CON 0x01
-#define DIP2_POT_PID 0x02
-#define DIP3_AUTO2 0x04
-#define DIP4_PIDSETTING 0x08
 
 #define PIN_SW_BLACK  29
 #define PIN_SW_RED    28
