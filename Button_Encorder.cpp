@@ -104,6 +104,19 @@ int DipSW::getDipState(){
     return dipNum;
 }
 
+bool DipSW::getBool(int one_dip, int on_or_off)
+{
+    bool out;
+    switch (on_or_off)
+    {
+    case ON: out = (dipNum & one_dip); break;
+    case OFF: out = (~dipNum & one_dip); break;
+
+    default: out = false; break;
+    }
+    return out;
+}
+
 int Encorder::getEncCount(){
     if(flag_enc){
         encA = digitalRead(PIN_ENC_A);
