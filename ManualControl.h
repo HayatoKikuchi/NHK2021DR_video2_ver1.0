@@ -10,9 +10,9 @@
 #include "define.h"
 #include "PIDclass.h"
 
-#define JOY_DEADBAND    ( 20 )
+#define JOY_DEADBAND    ( 5 )
 #define JOY_MAXVEL      ( 1.0 )
-#define JOY_MAXANGVEL   ( PI_ / 2.0 )
+#define JOY_MAXANGVEL   ( PI_ / 3.0 * 2.0 )
 
 #define JOYCONMODE  1
 #define JOYCONPID   2
@@ -26,25 +26,22 @@ public:
     double tmpPx, tmpPy;
 
     /*********** 関数宣言 ***********/
-    ManualControl(PID *_pid);
+    ManualControl(PID *_pidvel, PID *_pidposi);
     
     coords getGlobalVel(unsigned int JoyX, unsigned int JoyY, unsigned int JoyZ);
     coords getLocalVel(double refVx, double refVy, double refVz, double roboAngle,int mode);
     coords getVel_max(double vel_x, double vel_y, double vel_z);
     coords_4 getCmd(double refVx, double refVy, double refVz);
-    double updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode); // タイマー割込みで使用
-    void setRefAngle(double angle); //目標角度を設定，angle[deg]
-    //coords_4 getMechanumWheelAccel(double vel_x, double vel_y, double vel_z,double robotAngle,double mode,double robotAccel);
-
-    double robot_vel_x;
-    double robot_vel_y;
-    double robot_vel;
-    double refAngle;
+    bool updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode); // タイマー割込みで使用
+    bool setRefAngle(double angle); //目標角度を設定，angle[deg]
 
 private:
-    PID *pid;
+    PID *pidvel;
+    PID *pidposi;
 
+    double joyconZ_cmd;
     double posiZ_cmd;
+    double refAngle;
 
     int path_num;
     int mode;

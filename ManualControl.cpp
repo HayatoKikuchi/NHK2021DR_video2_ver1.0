@@ -11,8 +11,10 @@ Filter velX_filter(INT_TIME);
 Filter velY_filter(INT_TIME);
 Filter velZ_filter(INT_TIME);
 
-ManualControl::ManualControl(PID *_pid){
-  pid = _pid;
+ManualControl::ManualControl(PID *_pidvel, PID *_pidposi)
+{
+  pidvel = _pidvel;
+  pidposi = _pidposi;
   posiZ_cmd = 0.0;
   velX_filter.setLowPassPara(0.10, 0.0);//Tと初期値を設定
   velY_filter.setLowPassPara(0.10, 0.0);//Tと初期値を設定
@@ -70,8 +72,13 @@ coords ManualControl::getGlobalVel(unsigned int JoyX, unsigned int JoyY, unsigne
   return refV;
 }
 
-double ManualControl::updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode)
+bool ManualControl::updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode)
 {
+  double robot_omega;
+  static double pre_robotAngle;
+  robot_omega = (roboAngle - pre_robotAngle)/0.01;
+  pre_robotAngle = roboAngle;
+
   switch (mode)
   {
   case JOYCONMODE:
@@ -80,22 +87,29 @@ double ManualControl::updatePosiPID(double conZ_or_position,double maxomega, dou
   
   case JOYCONPID:
     refAngle += conZ_or_position * 0.01;
-    posiZ_cmd = pid->getCmd(refAngle,roboAngle,maxomega);
+    double refOmega;
+    refOmega = pidposi->getCmd(refAngle,roboAngle,maxomega);
+    refOmega = conZ_or_position;
+    joyconZ_cmd = pidvel->getCmd(refOmega,robot_omega,maxomega);
     break;
   
   case POSITIONPID:
-    posiZ_cmd = pid->getCmd(refAngle,roboAngle,maxomega);
+    double refOmega;
+    refOmega = pidposi->getCmd(refAngle,roboAngle,maxomega);
+    posiZ_cmd = pidvel->getCmd(refOmega,robot_omega,maxomega);
     break;
 
   default:
+    return false;
     break;
   }
-  return refAngle;
+  return true;
 }
 
-void ManualControl::setRefAngle(double angle)
+bool ManualControl::setRefAngle(double angle)
 {
   refAngle = angle / 360.0 * 2.0 * PI_ ;
+  return true;
 }
 
 coords ManualControl::getLocalVel(double vel_x, double vel_y, double vel_z, double roboAngle,int mode){
@@ -108,12 +122,13 @@ coords ManualControl::getLocalVel(double vel_x, double vel_y, double vel_z, doub
     refVel.z = vel_z;
     break;
   case JOYCONPID:
-    refVel.z = posiZ_cmd;
+    refVel.z = joyconZ_cmd;
     break;
   case POSITIONPID:
     refVel.z = posiZ_cmd;
     break;
   default:
+    refVel = {0.0,0.0,0.0};
     break;
   }
 
@@ -135,11 +150,7 @@ coords ManualControl::getVel_max(double vel_x, double vel_y, double vel_z){
     refV.y = vel_y*fabs(vel_y) / vel;
   }
   refV.z = vel_z;
-
-  // robot_vel_x = refV.x;
-  // robot_vel_y = refV.y;
-  // robot_vel   = sqrt(refV.x*refV.x + refV.y*refV.y);
-
+  
   return refV;
 }
 
@@ -170,11 +181,3 @@ coords_4 ManualControl::getCmd(double refVx, double refVy, double refVz){
 
   return VelCmd;
 }
-/*
-coords_4 ManualControl::getMechanumWheelAccel(double accel_x, double accel_y, double accel_z,double robotAngle,double mode,double robotAccel)
-{
-  coords GlobalAccel = getGlobalVel(accel_x,accel_y,accel_z); //速度の変換関数を加速度の変換に使用
-  coords LocalAccel = getLocalVel(GlobalAccel.x,GlobalAccel.y,GlobalAccel.z,robotAngle,mode); //速度の変換関数を加速度の変換に使用
-  coords_4 WheelAccel = getCmd(LocalAccel.x,LocalAccel.y,LocalAccel.z); //速度の変換関数を加速度の変換に使用
-  return WheelAccel;
-}*/
