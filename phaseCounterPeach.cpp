@@ -37,7 +37,7 @@ int phaseCounter::getCount(){
         return encount;
 	}
     
-    return -1;
+    return 0;
 }
 
 void phaseCounter::setCount(int ch, int num){
