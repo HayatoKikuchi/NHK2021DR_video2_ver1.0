@@ -32,7 +32,7 @@ void Controller::begin_api(int baudrate){
 bool Controller::update(byte PinName)
 {
   unsigned int checksum;
-  //uint8_t tmp;
+  preButtonState = ButtonState;
   char c;
   while (Ser->available())
   {
@@ -83,7 +83,6 @@ bool Controller::update(byte PinName)
       recv_msgs[recv_num++] = c;
     }
   }
-          preButtonState = ButtonState;
   return false;
 }
 
