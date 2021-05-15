@@ -15,7 +15,6 @@ ManualControl::ManualControl(PID *_pidvel, PID *_pidposi)
 {
   pidvel = _pidvel;
   pidposi = _pidposi;
-  posiZ_cmd = 0.0;
   velX_filter.setLowPassPara(0.10, 0.0);//Tと初期値を設定
   velY_filter.setLowPassPara(0.10, 0.0);//Tと初期値を設定
   velZ_filter.setLowPassPara(0.10, 0.0);//Tと初期値を設定
@@ -65,9 +64,6 @@ coords ManualControl::getGlobalVel(unsigned int JoyX, unsigned int JoyY, unsigne
   }
   refV.z = velZ_filter.LowPassFilter(rawV.z);
   //refV.z = rawV.z;
-
-  robot_vel_x = refV.x;
-  robot_vel_y = refV.y;
 
   return refV;
 }
