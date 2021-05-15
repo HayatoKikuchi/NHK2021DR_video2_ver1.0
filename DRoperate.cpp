@@ -10,9 +10,8 @@ DRoperate::DRoperate(lpms_me1 *_lpms, phaseCounter *_enc1, phaseCounter *_enc2)
   pre_encX = 0.0;
   pre_encY = 0.0;
   Angle_ofset = 0.0;
-  position.x = 0.0;
-  position.y = 0.0;
-  position.z = 0.0;
+  position = {0.0, 0.0, 0.0};
+  prePosition = {0.0, 0.0, 0.0};
 }
 
 PIDsetting::PIDsetting(PID *_pid, myLCDclass *_LCD, Encorder *_encorder)
@@ -38,8 +37,13 @@ void DRoperate::updateRobotPosition()
   position.x += x_axis_prime*cos(position.z) - y_axis_prime*sin(position.z);
   position.y += x_axis_prime*sin(position.z) + y_axis_prime*cos(position.z);
 
+  robotvelocity.x = (position.x - prePosition.x)/INT_TIME;
+  robotvelocity.y = (position.y - prePosition.y)/INT_TIME;
+  robotvelocity.z = (position.z - prePosition.z)/INT_TIME;
+
   pre_encX = encX;
   pre_encY = encY;
+  prePosition = position;
 }
 
 void DRoperate::updateRoboAngle()
@@ -61,6 +65,11 @@ void DRoperate::setPosition(double x, double y) // x[m]，y[m]
 coords DRoperate::getPosition()
 {
   return position;
+}
+
+coords DRoperate::getVelocity()
+{
+  return robotvelocity;
 }
 
 void DRoperate::DRsetup()
