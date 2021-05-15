@@ -4,9 +4,9 @@
 #include <Arduino.h>
 
 #define DIP1_CON 0x01
-#define DIP2_POT_PID 0x02
-#define DIP3_AUTO2 0x04
-#define DIP4_PIDSETTING 0x08
+#define DIP2 0x02
+#define DIP3_POSITION_PID 0x04
+#define DIP4_SETTING 0x08
 
 #define ON 1
 #define OFF 2
