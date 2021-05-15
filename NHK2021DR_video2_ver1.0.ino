@@ -185,7 +185,7 @@ void setup()
 }
 
 /* ロボットの速度について割込み処理を行う */
-void velocity_task_10ms()
+bool velocity_task_10ms()
 {
   DR.updateRobotPosition(); //自己位置の更新
   //DR.updateRoboAngle(); // updateRobotPosition関数を使用する場合は不要
@@ -199,11 +199,13 @@ void velocity_task_10ms()
   GlobalvelocityCMD.x = velX_pid.getCmd(C.x*refGlobalVelocity.x,velocity.x,C.x);
   GlobalvelocityCMD.y = velY_pid.getCmd(C.y*refGlobalVelocity.y,velocity.y,C.y);
   GlobalvelocityCMD.z = ManualCon.getOmegaCMD(C.z*refGlobalVelocity.z,C.z*MAXOMEGA,position.z,turning_mode);
+
+  return true;
 }
 
 
 /* LPC1768にコントローラの情報を送る処理 */
-void serial_upper()
+bool serial_upper()
 {  
   Con.setAvailable(dipsw.getBool(DIP1_CON,ON)); //DIP1でLPC1768に送信するかを決定
   bool lpc_com; //LPC1768にコントローラのデータを送信するかしないか
@@ -218,11 +220,13 @@ void serial_upper()
   {
     digitalWrite(PIN_LED_1,HIGH);
   }
+
+  return true;
 }
 
 
 /*　展開の処理　*/
-void expand_task()
+bool expand_task()
 {
   if(Con.readButton(BUTTON_SANKAKU,PUSHED))
   {
@@ -234,6 +238,8 @@ void expand_task()
     digitalWrite(PIN_SUPPORT_LEFT,LOW);
     expand_stop_order = false;
   }
+
+  return true;
 }
 
 
@@ -262,7 +268,7 @@ coords getVelMax()
 
 
 /*　旋回角度の指定 (90n,180n,270n,360n[度]で固定) */
-void set_robot_angle()
+bool set_robot_angle()
 {
   double robotRefDeg;
   int angle = (int)degrees(position.z);
@@ -279,6 +285,8 @@ void set_robot_angle()
     else robotRefDeg = angle + (90 - amari);
     ManualCon.setRefAngle(robotRefDeg);
   }
+
+  return true;
 }
 
 
@@ -292,7 +300,7 @@ coords_4 getWheelCMD()
 
 
 /* 位置PID制御の目標位置を生成（PID制御のゲイン調整のため）*/
-void create_refPosition()
+bool create_refPosition()
 {
   static double stock_posiX, stock_posiY;
   static bool PIDSetting_phase1 = true;
@@ -343,11 +351,13 @@ void create_refPosition()
       countx = county = 0;
     }
   }
+
+  return true;
 }
 
 
 /*　PID制御のゲイン調整　*/
-void pid_gain_setting()
+bool pid_gain_setting()
 {  
   if(dipsw.getBool(DIP4_SETTING,ON)) //DIP4がONの場合
   {
@@ -387,6 +397,8 @@ void pid_gain_setting()
     posiY_setting.init();
     posiZ_setting.init();
   }
+
+  return true;
 }
 
 
