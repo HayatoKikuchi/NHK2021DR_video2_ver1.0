@@ -1,7 +1,7 @@
 #ifndef PIDCLASS_h
 #define PIDCLASS_h
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include "define.h"
 
 class PID
