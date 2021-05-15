@@ -72,65 +72,53 @@ coords ManualControl::getGlobalVel(unsigned int JoyX, unsigned int JoyY, unsigne
   return refV;
 }
 
-bool ManualControl::updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode)
+double ManualControl::getOmegaCMD(double conZ_or_position,double maxomega, double _robotAngle, int mode)
 {
+  robotAngle = _robotAngle;
   double robot_omega;
   static double pre_robotAngle;
-  robot_omega = (roboAngle - pre_robotAngle)/0.01;
-  pre_robotAngle = roboAngle;
+  robot_omega = (robotAngle - pre_robotAngle)/INT_TIME;
+  pre_robotAngle = robotAngle;
+  double refOmega;
 
   switch (mode)
   {
   case JOYCONMODE:
-    posiZ_cmd = conZ_or_position;
-    break;
-  
-  case JOYCONPID:
-    refAngle += conZ_or_position * 0.01;
-    double refOmega;
-    refOmega = pidposi->getCmd(refAngle,roboAngle,maxomega);
     refOmega = conZ_or_position;
-    joyconZ_cmd = pidvel->getCmd(refOmega,robot_omega,maxomega);
+    break;
+  
+  case JOYCONVELPID:
+    refOmega = pidposi->getCmd(conZ_or_position,robot_omega,maxomega);
+    break;
+  
+  case JOYCONPOSIPID:
+    refAngle += conZ_or_position * 0.01;
+    refOmega = pidvel->getCmd(pidposi->getCmd(refAngle,robotAngle,maxomega),robot_omega,maxomega);
     break;
   
   case POSITIONPID:
-    double refOmega;
-    refOmega = pidposi->getCmd(refAngle,roboAngle,maxomega);
-    posiZ_cmd = pidvel->getCmd(refOmega,robot_omega,maxomega);
+    refOmega = pidvel->getCmd(pidposi->getCmd(conZ_or_position,robotAngle,maxomega),robot_omega,maxomega);
     break;
 
   default:
-    return false;
+    refOmega = 0.0;
     break;
   }
-  return true;
+
+  return refOmega;
 }
 
-bool ManualControl::setRefAngle(double angle)
+bool ManualControl::setRefAngle(double angle_deg)
 {
-  refAngle = angle / 360.0 * 2.0 * PI_ ;
+  refAngle = radians(angle_deg);
   return true;
 }
 
-coords ManualControl::getLocalVel(double vel_x, double vel_y, double vel_z, double roboAngle,int mode){
+coords ManualControl::getLocalVel(double vel_x, double vel_y, double vel_z){
   coords refVel;
-  refVel.x = +vel_x*cos(roboAngle) + vel_y*sin(roboAngle);
-  refVel.y = -vel_x*sin(roboAngle) + vel_y*cos(roboAngle);
-  switch (mode)
-  {
-  case JOYCONMODE:
-    refVel.z = vel_z;
-    break;
-  case JOYCONPID:
-    refVel.z = joyconZ_cmd;
-    break;
-  case POSITIONPID:
-    refVel.z = posiZ_cmd;
-    break;
-  default:
-    refVel = {0.0,0.0,0.0};
-    break;
-  }
+  refVel.x = +vel_x*cos(robotAngle) + vel_y*sin(robotAngle);
+  refVel.y = -vel_x*sin(robotAngle) + vel_y*cos(robotAngle);
+  refVel.z = vel_z;
 
   return refVel;
 }

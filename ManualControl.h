@@ -7,16 +7,18 @@
 #ifndef MANUALCONTROL_h
 #define MANUALCONTROL_h
 
+#include <Arduino.h>
 #include "define.h"
 #include "PIDclass.h"
 
 #define JOY_DEADBAND    ( 5 )
 #define JOY_MAXVEL      ( 1.0 )
-#define JOY_MAXANGVEL   ( PI_ / 3.0 * 2.0 )
+#define JOY_MAXANGVEL   ( PI / 3.0 * 2.0 )
 
-#define JOYCONMODE  1
-#define JOYCONPID   2
-#define POSITIONPID 3
+#define JOYCONMODE      1
+#define JOYCONVELPID    2
+#define JOYCONPOSIPID   3
+#define POSITIONPID     4
 
 class ManualControl{
 public:
@@ -29,18 +31,17 @@ public:
     ManualControl(PID *_pidvel, PID *_pidposi);
     
     coords getGlobalVel(unsigned int JoyX, unsigned int JoyY, unsigned int JoyZ);
-    coords getLocalVel(double refVx, double refVy, double refVz, double roboAngle,int mode);
+    coords getLocalVel(double refVx, double refVy, double refVz);
     coords getVel_max(double vel_x, double vel_y, double vel_z);
     coords_4 getCmd(double refVx, double refVy, double refVz);
-    bool updatePosiPID(double conZ_or_position,double maxomega, double roboAngle, int mode); // タイマー割込みで使用
-    bool setRefAngle(double angle); //目標角度を設定，angle[deg]
+    double getOmegaCMD(double conZ_or_position,double maxomega, double _robotAngle, int mode); // タイマー割込みで使用
+    bool setRefAngle(double angle_deg); //目標角度を設定，angle[deg]
 
 private:
     PID *pidvel;
     PID *pidposi;
 
-    double joyconZ_cmd;
-    double posiZ_cmd;
+    double robotAngle;
     double refAngle;
 
     int path_num;
