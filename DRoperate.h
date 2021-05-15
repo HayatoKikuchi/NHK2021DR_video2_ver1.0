@@ -4,6 +4,7 @@
 #ifndef DROPERATE_h
 #define DROPERATE_h
 
+#include <Arduino.h>
 #include "define.h"
 #include "Button_Encorder.h"
 #include "lpms_me1Peach.h"
@@ -40,10 +41,10 @@ public:
     void RGB_led(int period); //フルカラーLEDを奇麗に光らせる
 
     coords getPosition();
-    coords getVel();
+    coords getVelocity();
 
 private:
-    /****自己位置推定用の変数****/
+    /****自己位置推定用の変数とクラス****/
     lpms_me1 *lpms;
     phaseCounter *enc1;
     phaseCounter *enc2;
@@ -51,6 +52,8 @@ private:
     double encY_rad , encY , pre_encY;
     double x_axis_prime, y_axis_prime;
     double Angle_ofset;
+    coords prePosition;
+    coords robotvelocity;
 };
 
 class PIDsetting
