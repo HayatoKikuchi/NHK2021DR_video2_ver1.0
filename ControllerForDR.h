@@ -1,5 +1,7 @@
-#ifndef CONTROLLER_H
-#define CONTROLLER_H
+// Contoller.hを勝手に変更
+
+#ifndef CONTROLLERFORDR_H
+#define CONTROLLERFORDR_H
 
 #include <Arduino.h>
 #include "define.h"

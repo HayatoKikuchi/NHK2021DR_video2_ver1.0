@@ -1,4 +1,6 @@
-#include "Controller.h"
+// Controller.cppを勝手に変更
+
+#include "ControllerForDR.h"
 #include "XBee.h"
 #include "define.h"
 

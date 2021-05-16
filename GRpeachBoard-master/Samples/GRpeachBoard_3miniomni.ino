@@ -198,6 +198,10 @@ void setup()
   myLCD.color_white(); // LCDの色を白に
   myLCD.clear_display(); // LCDをクリア
 
+  SPI.begin(); // ここでSPIをbeginしてあげないとちゃんと動かなかった
+  //if(amt203.init() != 1) error_stop();
+  LEDblink(PIN_LED_GREEN, 2, 100); // 初期が終わった証拠にブリンク
+
   // LPMS-ME1の初期化
   if(lpms.init() != 1) error_stop(); // 理由はわからないが，これをやる前にLEDblinkかanalogWriteを実行していないと初期化できない
   LEDblink(PIN_LED_BLUE, 2, 100);  // 初期化が終わった証拠にブリンク

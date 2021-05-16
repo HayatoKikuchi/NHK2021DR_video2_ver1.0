@@ -1,3 +1,5 @@
+// Button.hを勝手に変更した
+
 #ifndef _BUTTON_ENCORDER_H_INCLUDED
 #define _BUTTON_ENCORDER_H_INCLUDED
 

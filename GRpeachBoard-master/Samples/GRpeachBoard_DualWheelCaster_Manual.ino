@@ -1,6 +1,6 @@
 // GR-PEACHボードを使ったプログラムです
 // このプログラムは，Leonardo micro pro に接続されたコントローラを使った，全方向移動ロボットの制御プログラムです．
-// 駆動方式は，オムニホイール3輪による全方向移動です．
+// 駆動方式は，デュアルキャスターによる全方向移動です．
 // RoboClawは本ボードに取り付けられており，RoboClawライブラリの使用を前提とします
 // http://downloads.basicmicro.com/code/arduino.zip
 // 作成日 2019年12月30日
@@ -12,29 +12,20 @@
 
 #include "define.h"
 #include "phaseCounterPeach.h"
-#include "AMT203VPeach.h"
 #include "lpms_me1Peach.h"
 #include "SDclass.h"
-#include "MotionGenerator.h"
+#include "AutoControl.h"
 #include "LCDclass.h"
 #include "Button.h"
 #include "ManualControl.h"
+#include "Platform.h"
 #include "RoboClaw.h"
-
-#define SERIAL_LPMSME1  Serial1
-#define SERIAL_ROBOCLAW Serial4
-#define SERIAL_LEONARDO Serial5
-#define SERIAL_LCD      Serial6
-#define SERIAL_XBEE     Serial7
-
-#define PIN_XBEERESET 66
-
-RoboClaw MD(&SERIAL_ROBOCLAW,1);
 
 phaseCounter enc1(1);
 phaseCounter enc2(2);
 
-ManualControl Controller;
+ManualControl controller;
+Platform platform;
 
 //AMT203V amt203(&SPI, PIN_CSB);
 lpms_me1 lpms(&SERIAL_LPMSME1);
@@ -53,17 +44,14 @@ Button dip3(PIN_DIP3);
 Button dip4(PIN_DIP4);
 
 // グローバル変数の設定
-double gPosix = 0.0, gPosiy = 0.0, gPosiz = 0.0;
+coords gPosi = {0.0, 0.0, 0.0};
 //double refVx, refVy, refVz;
-double angle_rad;
-int encX = 0, encY = 0; // X,Y軸エンコーダのカウント値
-int preEncX = 0, preEncY = 0; // X,Y軸エンコーダの"1サンプル前の"カウント値
 
 unsigned int ButtonState = 0, LJoyX = 127, LJoyY = 127, RJoyX = 127, RJoyY = 127; // コントローラデータ格納用
 
 int zone; // 赤か青か
 bool flag_10ms = false; // loop関数で10msごとにシリアルプリントできるようにするフラグ
-bool flag_500ms = false;
+bool flag_100ms = false;
 
 // 最大最小範囲に収まるようにする関数
 double min_max(double value, double minmax)
@@ -145,41 +133,19 @@ void timer_warikomi(){
   // フラグ立てるための処理
   flag_10ms = true;
   if(count_flag >= 10){
-    flag_500ms = true;
+    flag_100ms = true;
     count_flag = 0;
   }
 
+  double angle_rad;
+  int encX, encY; // X,Y軸エンコーダのカウント値
   // 自己位置推定用エンコーダのカウント値取得
   encX = -enc1.getCount();
   encY =  enc2.getCount();
-  
-  // エンコーダのカウント値から角度の変化量を計算する
-  double angX, angY;
-  angX = (double)( encX - preEncX ) * _2PI_RES4;
-  angY = (double)( encY - preEncY ) * _2PI_RES4;
 
   // LPMS-ME1のから角度を取得
   angle_rad = (double)lpms.get_z_angle();
-
-  // ローカル座標系での変化量を計算(zは角度)
-  double Posix, Posiy, Posiz;
-  static double pre_angle_rad = angle_rad;
-  double angle_diff;
-  angle_diff = angle_rad - pre_angle_rad; // 角度の変化量を計算
-  Posiz = angle_diff;
-  Posix = RADIUS_X * angX; //RADIUS_X はX軸エンコーダの車輪半径
-  Posiy = RADIUS_Y * angY; //RADIUS_Y はY軸エンコーダの車輪半径
-
-  // グローバル座標系での変化量に変換し，これまでのデータに加算することで自己位置推定完了
-  gPosiz += Posiz;
-  gPosix += Posix * cos( gPosiz ) - Posiy * sin( gPosiz );
-  gPosiy += Posix * sin( gPosiz ) + Posiy * cos( gPosiz );
-  
-  // 1サンプル前のデータとして今回取得したデータを格納
-  preEncX = encX;
-  preEncY = encY;
-  pre_angle_rad = angle_rad;
-
+  gPosi = platform.getPosi(encX, encY, angle_rad);
   
 }
 
@@ -205,7 +171,6 @@ void setup()
   String lcd_message = "";
 
   Serial.begin(115200);
-  SERIAL_ROBOCLAW.begin(115200);
   SERIAL_LEONARDO.begin(115200);
   SERIAL_LCD.begin(115200);
   SERIAL_XBEE.begin(115200);
@@ -214,9 +179,7 @@ void setup()
   delay(10);
   digitalWrite(PIN_XBEERESET,1);
   delay(10);
-
-  SPI1.begin(); // チェック用
-
+  
   pinMode(PIN_SW, INPUT); // オンボードのスイッチ
 
   pinMode(PIN_LED_1, OUTPUT);
@@ -227,20 +190,21 @@ void setup()
   
   pinMode(PIN_ENC_A, INPUT);
   pinMode(PIN_ENC_B, INPUT);
+
+  analogWrite(PIN_LED_RED, 0); // 消しちゃダメ，ぜったい →　LPMSのために
+  analogWrite(PIN_LED_BLUE, 0);
+  analogWrite(PIN_LED_GREEN, 0);
   
   myLCD.color_white(); // LCDの色を白に
   myLCD.clear_display(); // LCDをクリア
 
-  // AMT203Vの初期化
   SPI.begin(); // ここでSPIをbeginしてあげないとちゃんと動かなかった
-  // if(amt203.init() != 1) error_stop();
+  //if(amt203.init() != 1) error_stop();
   LEDblink(PIN_LED_GREEN, 2, 100); // 初期が終わった証拠にブリンク
-  Serial.println("AMT203V init done!");
-  Serial.flush();
-  
+
   // LPMS-ME1の初期化
-  if(lpms.init() != 1) error_stop();
-  LEDblink(PIN_LED_BLUE, 2, 100);  // 初期が終わった証拠にブリンク
+  if(lpms.init() != 1) error_stop(); // 理由はわからないが，これをやる前にLEDblinkかanalogWriteを実行していないと初期化できない
+  LEDblink(PIN_LED_BLUE, 2, 100);  // 初期化が終わった証拠にブリンク
   Serial.println("LPMS-ME1 init done!");
   Serial.flush();
   
@@ -274,12 +238,14 @@ void setup()
 
   myLCD.write_line("Angle:", LINE_3);
 
-  myLCD.write_double(gPosix, LINE_2, 3);
-  myLCD.write_double(gPosiy, LINE_2, 12);
-  myLCD.write_double(gPosiz, LINE_3, 6);
+  myLCD.write_double(gPosi.x, LINE_2, 3);
+  myLCD.write_double(gPosi.y, LINE_2, 12);
+  myLCD.write_double(gPosi.z, LINE_3, 6);
 
   enc1.init();
   enc2.init();
+
+  platform.platformInit(gPosi);
 
   MsTimer2::set(10, timer_warikomi); // 10ms period
   MsTimer2::start();
@@ -315,24 +281,8 @@ void loop()
 
   // 10msに1回ピン情報を出力する
   if(flag_10ms){
-    // ローカル速度から，各車輪の角速度を計算
-    coords refV = Controller.getVel(LJoyX, LJoyY, RJoyY);
-    double refOmegaA, refOmegaB, refOmegaC;
-
-    refOmegaA = (-refV.y - refV.z * DIST2WHEEL) / WHEEL_R * GEARRATIO;
-    refOmegaB = ( refV.x*COS_PI_6 + refV.y*SIN_PI_6 - refV.z * DIST2WHEEL) / WHEEL_R * GEARRATIO;
-    refOmegaC = (-refV.x*COS_PI_6 + refV.y*SIN_PI_6 - refV.z * DIST2WHEEL) / WHEEL_R * GEARRATIO;
-
-    // RoboClawの指令値に変換
-    double mdCmdA, mdCmdB, mdCmdC;
-    mdCmdA = refOmegaA * _2RES_PI;
-    mdCmdB = refOmegaB * _2RES_PI;
-    mdCmdC = refOmegaC * _2RES_PI;
-
-    // モータにcmdを送り，回す
-    MD.SpeedM1(ADR_MD1, (int)mdCmdA);// 右前
-    MD.SpeedM2(ADR_MD1, (int)mdCmdB);// 左前
-    MD.SpeedM2(ADR_MD2, (int)mdCmdC);// 右後
+    coords refV = controller.getRefVel(LJoyX, LJoyY, RJoyY); // ジョイスティックの値から，目標速度を生成
+    platform.VelocityControl(refV); // 目標速度に応じて，プラットフォームを制御
 
     // SDカードにログを吐く
     String dataString = "";
@@ -343,7 +293,7 @@ void loop()
       first_write = false;
       dataString = "";
     }
-    dataString += String(gPosix, 4) + "," + String(gPosiy, 4) + "," + String(gPosiz, 4);
+    dataString += String(gPosi.x, 4) + "," + String(gPosi.y, 4) + "," + String(gPosi.z, 4);
     dataString += "," + String(refV.x, 4) + "," + String(refV.y, 4) + "," + String(refV.z, 4);
 
     mySD.write_logdata(dataString);
@@ -394,31 +344,19 @@ void loop()
     Serial.print(" ");
     Serial.print(refV.z);
     Serial.print(" ");
-    Serial.print(refOmegaA);
-    Serial.print(" ");
-    Serial.print(refOmegaB);
-    Serial.print(" ");
-    Serial.print(refOmegaC);
-    Serial.print(" ");
-    Serial.print(mdCmdA);
-    Serial.print(" ");
-    Serial.print(mdCmdB);
-    Serial.print(" ");
-    Serial.println(mdCmdC);
-    
-
+    Serial.println(gPosi.z);
     SERIAL_XBEE.flush();
 
     flag_10ms = false;
   }
 
   // 100msごとにLCDを更新する
-  if(flag_500ms){
-    myLCD.write_double(gPosix, LINE_2, 3);
-    myLCD.write_double(gPosiy, LINE_2, 12);
-    myLCD.write_double(gPosiz, LINE_3, 6);
+  if(flag_100ms){
+    myLCD.write_double(gPosi.x, LINE_2, 3);
+    myLCD.write_double(gPosi.y, LINE_2, 12);
+    myLCD.write_double(gPosi.z, LINE_3, 6);
     
-    flag_500ms = false;
+    flag_100ms = false;
   }
  //delayMicroseconds(100);
 }

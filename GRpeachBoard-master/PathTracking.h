@@ -3,8 +3,11 @@
 
 #include <Arduino.h>
 #include <math.h>
+#include "PIDclass.h"
+#include "Filter.h"
+#include "define.h"
 
-#define PATHNUM  50
+#define PATHNUM 50
 #define POINTNUM 100
 
 #define FOLLOW_TANGENT  ( 0 )
@@ -72,8 +75,8 @@ public:
 
     void initSettings();
 
-    void calcRefpoint(double Posix, double Posiy);
-    int calcRefvel(double Posix, double Posiy, double Posiz);
+    void calcRefpoint();
+    int calcRefvel();
     
     void incrPathnum(double conv_length, double conv_tnum);
     void setConvPara(double conv_length, double conv_tnum);
@@ -90,16 +93,11 @@ public:
     void setPosiPIDzPara(float xKp, float xKi, float xKd);
     void setYokozurePIDPara(float xKp, float xKi, float xKd);
     void setKakudoPIDPara(float xKp, float xKi, float xKd);
-    void kakudoPIDinit(double Posiz);
+    void kakudoPIDinit();
     void setRefKakudo();
 
     double getRefVper();
     double getRefVrot();
-
-    void settingPx(int pathNum, double px0, double px1, double px2, double px3);
-    void settingPy(int pathNum, double py0, double py1, double py2, double py3);
-    void settingRefAngle(int pathNum, double refAngle);
-    void settingRefVel(int pathNum, double refVel);
 
 private:
     int path_num;

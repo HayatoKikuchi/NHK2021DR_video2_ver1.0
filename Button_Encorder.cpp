@@ -1,3 +1,5 @@
+// Button.cppを勝手に変更した
+
 #include "Button_Encorder.h"
 #include "define.h"
 
